@@ -8,7 +8,11 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from states.create_game import CreateGameState
 
 from database.admins import get_admin_by_telegram_id
-from database.games import create_game, get_games_by_admin, cancel_game
+from database.games import (
+    create_game,
+    get_games_by_admin,
+    cancel_game
+)
 
 router = Router()
 
@@ -35,7 +39,7 @@ async def field(message: Message, state: FSMContext):
 
     await state.update_data(field_name=message.text)
 
-    await message.answer("📍 Введите адрес поля:")
+    await message.answer("📍 Введите адрес:")
     await state.set_state(CreateGameState.waiting_address)
 
 
@@ -44,7 +48,7 @@ async def address(message: Message, state: FSMContext):
 
     await state.update_data(address=message.text)
 
-    await message.answer("📅 Введите дату и время:\n\nПример: 21.06.2026 19:00")
+    await message.answer("📅 Введите дату (dd.mm.yyyy hh:mm):")
     await state.set_state(CreateGameState.waiting_date)
 
 
@@ -53,7 +57,7 @@ async def date(message: Message, state: FSMContext):
 
     await state.update_data(game_date=message.text)
 
-    await message.answer("👥 Введите максимальное количество игроков:")
+    await message.answer("👥 Введите max игроков:")
     await state.set_state(CreateGameState.waiting_max_players)
 
 
@@ -83,13 +87,14 @@ async def save_game(message: Message, state: FSMContext):
 
     await message.answer(
         f"""
-🎉 ИГРА СОЗДАНА!
+🎉 <b>ИГРА СОЗДАНА!</b>
 
-🏟 Поле: {data['field_name']}
-📍 Адрес: {data['address']}
-📅 Дата: {data['game_date']}
-👥 Игроки: 0/{message.text}
-"""
+🏟 {data['field_name']}
+📍 {data['address']}
+📅 {data['game_date']}
+👥 0/{message.text}
+""",
+        parse_mode="HTML"
     )
 
     await state.clear()
@@ -113,7 +118,7 @@ async def my_games(message: Message):
     games = get_games_by_admin(admin["id"])
 
     if not games:
-        await message.answer("📭 У вас пока нет созданных игр")
+        await message.answer("📭 У вас пока нет игр")
         return
 
     for game in games:
@@ -138,7 +143,7 @@ async def my_games(message: Message):
             f"""
 {status_icon} <b>{game['field_name']}</b>
 
-📍 <i>{game['address']}</i>
+📍 {game['address']}
 📅 {game['game_date']}
 👥 0/{game['max_players']}
 
