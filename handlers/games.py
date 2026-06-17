@@ -14,7 +14,7 @@ router = Router()
 
 
 # -------------------------
-# СОЗДАНИЕ ИГРЫ (FSM)
+# СОЗДАНИЕ ИГРЫ ⚽
 # -------------------------
 
 @router.message(lambda m: m.text == "⚽ Создать игру")
@@ -23,10 +23,10 @@ async def start_game(message: Message, state: FSMContext):
     admin = get_admin_by_telegram_id(message.from_user.id)
 
     if not admin:
-        await message.answer("Нет доступа")
+        await message.answer("🚫 Нет доступа")
         return
 
-    await message.answer("Введите название поля:")
+    await message.answer("🏟 Введите название поля:")
     await state.set_state(CreateGameState.waiting_field)
 
 
@@ -35,7 +35,7 @@ async def field(message: Message, state: FSMContext):
 
     await state.update_data(field_name=message.text)
 
-    await message.answer("Введите адрес:")
+    await message.answer("📍 Введите адрес поля:")
     await state.set_state(CreateGameState.waiting_address)
 
 
@@ -44,7 +44,7 @@ async def address(message: Message, state: FSMContext):
 
     await state.update_data(address=message.text)
 
-    await message.answer("Введите дату (dd.mm.yyyy hh:mm):")
+    await message.answer("📅 Введите дату и время:\n\nПример: 21.06.2026 19:00")
     await state.set_state(CreateGameState.waiting_date)
 
 
@@ -53,7 +53,7 @@ async def date(message: Message, state: FSMContext):
 
     await state.update_data(game_date=message.text)
 
-    await message.answer("Введите max игроков:")
+    await message.answer("👥 Введите максимальное количество игроков:")
     await state.set_state(CreateGameState.waiting_max_players)
 
 
@@ -70,7 +70,7 @@ async def save_game(message: Message, state: FSMContext):
             "%d.%m.%Y %H:%M"
         ).isoformat()
     except ValueError:
-        await message.answer("Неверный формат даты")
+        await message.answer("⚠️ Неверный формат даты")
         return
 
     create_game(
@@ -83,12 +83,12 @@ async def save_game(message: Message, state: FSMContext):
 
     await message.answer(
         f"""
-⚽ Игра создана
+🎉 ИГРА СОЗДАНА!
 
-🏟 {data['field_name']}
-📍 {data['address']}
-📅 {data['game_date']}
-👥 0/{message.text}
+🏟 Поле: {data['field_name']}
+📍 Адрес: {data['address']}
+📅 Дата: {data['game_date']}
+👥 Игроки: 0/{message.text}
 """
     )
 
@@ -96,7 +96,7 @@ async def save_game(message: Message, state: FSMContext):
 
 
 # -------------------------
-# МОИ ИГРЫ
+# МОИ ИГРЫ 📋
 # -------------------------
 
 @router.message(lambda m: m.text == "📋 Мои игры")
@@ -105,7 +105,7 @@ async def my_games(message: Message):
     admin = get_admin_by_telegram_id(message.from_user.id)
 
     if not admin:
-        await message.answer("Нет доступа")
+        await message.answer("🚫 Нет доступа")
         return
 
     admin = admin[0]
@@ -113,40 +113,44 @@ async def my_games(message: Message):
     games = get_games_by_admin(admin["id"])
 
     if not games:
-        await message.answer("У вас пока нет игр")
+        await message.answer("📭 У вас пока нет созданных игр")
         return
 
     for game in games:
 
         status_icon = "🟢" if game["status"] == "active" else "🔴"
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="❌ Отменить игру",
-                        callback_data=f"cancel_{game['id']}"
-                    )
+        keyboard = None
+
+        if game["status"] == "active":
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="❌ Отменить игру",
+                            callback_data=f"cancel_{game['id']}"
+                        )
+                    ]
                 ]
-            ]
-        )
+            )
 
         await message.answer(
             f"""
-{status_icon} {game['field_name']}
+{status_icon} <b>{game['field_name']}</b>
 
-📍 {game['address']}
+📍 <i>{game['address']}</i>
 📅 {game['game_date']}
 👥 0/{game['max_players']}
 
-Статус: {game['status']}
+⚡ Статус: {game['status']}
 """,
+            parse_mode="HTML",
             reply_markup=keyboard
         )
 
 
 # -------------------------
-# ОТМЕНА ИГРЫ
+# ОТМЕНА ИГРЫ ❌
 # -------------------------
 
 @router.callback_query(F.data.startswith("cancel_"))
@@ -157,7 +161,8 @@ async def cancel_game_handler(callback: CallbackQuery):
     cancel_game(game_id)
 
     await callback.message.edit_text(
-        callback.message.text + "\n\n❌ Игра отменена"
+        callback.message.text + "\n\n❌ <b>Игра отменена</b>",
+        parse_mode="HTML"
     )
 
     await callback.answer("Игра отменена")
