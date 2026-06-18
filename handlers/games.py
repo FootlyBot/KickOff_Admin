@@ -145,7 +145,7 @@ async def my_games(message: Message):
 
 📍 {game['address']}
 📅 {game['game_date']}
-👥 0/{game['max_players']}
+👥 {game['current_players']}/{game['max_players']}
 
 ⚡ Статус: {game['status']}
 """,
