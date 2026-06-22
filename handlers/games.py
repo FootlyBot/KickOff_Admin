@@ -1,9 +1,15 @@
 from datetime import datetime
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+)
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from states.create_game import CreateGameState
 
@@ -15,6 +21,34 @@ from database.games import (
 )
 
 router = Router()
+
+
+# -------------------------
+# КНОПКА ОТМЕНЫ
+# -------------------------
+
+cancel_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="❌ Отменить создание")]
+    ],
+    resize_keyboard=True
+)
+
+
+@router.message(lambda m: m.text == "❌ Отменить создание")
+async def cancel_create_game(message: Message, state: FSMContext):
+
+    current_state = await state.get_state()
+
+    if not current_state:
+        await message.answer("Нет активного создания игры")
+        return
+
+    await state.clear()
+
+    await message.answer(
+        "❌ Создание игры отменено"
+    )
 
 
 # -------------------------
@@ -30,7 +64,11 @@ async def start_game(message: Message, state: FSMContext):
         await message.answer("🚫 Нет доступа")
         return
 
-    await message.answer("🏟 Введите название поля:")
+    await message.answer(
+        "🏟 Введите название поля:",
+        reply_markup=cancel_keyboard
+    )
+
     await state.set_state(CreateGameState.waiting_field)
 
 
@@ -39,7 +77,11 @@ async def field(message: Message, state: FSMContext):
 
     await state.update_data(field_name=message.text)
 
-    await message.answer("📍 Введите адрес:")
+    await message.answer(
+        "📍 Введите адрес:",
+        reply_markup=cancel_keyboard
+    )
+
     await state.set_state(CreateGameState.waiting_address)
 
 
@@ -48,7 +90,11 @@ async def address(message: Message, state: FSMContext):
 
     await state.update_data(address=message.text)
 
-    await message.answer("📅 Введите дату (dd.mm.yyyy hh:mm):")
+    await message.answer(
+        "📅 Введите дату (dd.mm.yyyy hh:mm):",
+        reply_markup=cancel_keyboard
+    )
+
     await state.set_state(CreateGameState.waiting_date)
 
 
@@ -57,7 +103,11 @@ async def date(message: Message, state: FSMContext):
 
     await state.update_data(game_date=message.text)
 
-    await message.answer("👥 Введите max игроков:")
+    await message.answer(
+        "👥 Введите max игроков:",
+        reply_markup=cancel_keyboard
+    )
+
     await state.set_state(CreateGameState.waiting_max_players)
 
 
@@ -73,8 +123,21 @@ async def save_game(message: Message, state: FSMContext):
             data["game_date"],
             "%d.%m.%Y %H:%M"
         ).isoformat()
+
     except ValueError:
-        await message.answer("⚠️ Неверный формат даты")
+        await message.answer(
+            "⚠️ Неверный формат даты",
+            reply_markup=cancel_keyboard
+        )
+        return
+
+    try:
+        max_players = int(message.text)
+    except ValueError:
+        await message.answer(
+            "⚠️ Введите число",
+            reply_markup=cancel_keyboard
+        )
         return
 
     create_game(
@@ -82,7 +145,7 @@ async def save_game(message: Message, state: FSMContext):
         field_name=data["field_name"],
         address=data["address"],
         game_date=game_date,
-        max_players=int(message.text)
+        max_players=max_players
     )
 
     await message.answer(
@@ -92,7 +155,7 @@ async def save_game(message: Message, state: FSMContext):
 🏟 {data['field_name']}
 📍 {data['address']}
 📅 {data['game_date']}
-👥 0/{message.text}
+👥 0/{max_players}
 """,
         parse_mode="HTML"
     )
