@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from database.supabase_client import supabase
 
@@ -25,17 +25,22 @@ def create_game(admin_id: str, field_name: str, address: str, game_date: str, ma
 
 
 # -------------------------
-# GET GAMES
+# GET GAMES (ONLY FUTURE ACTIVE)
 # -------------------------
 
 def get_games_by_admin(admin_id: str):
+    now = datetime.now(timezone.utc).isoformat()
+
     res = (
         supabase.table("games")
         .select("*")
         .eq("admin_id", admin_id)
+        .eq("status", "active")        # только активные
+        .gte("game_date", now)         # только будущие
         .order("game_date", desc=False)
         .execute()
     )
+
     return res.data
 
 
@@ -48,7 +53,7 @@ def cancel_game(game_id: str):
         supabase.table("games")
         .update({
             "status": "cancelled",
-            "cancelled_at": datetime.utcnow().isoformat()
+            "cancelled_at": datetime.now(timezone.utc).isoformat()
         })
         .eq("id", game_id)
         .execute()
@@ -57,11 +62,11 @@ def cancel_game(game_id: str):
 
 
 # -------------------------
-# DELETE OLD CANCELLED GAMES
+# DELETE OLD CANCELLED GAMES (1+ day old)
 # -------------------------
 
 def delete_old_cancelled_games():
-    cutoff = (datetime.utcnow() - timedelta(days=3)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
 
     res = (
         supabase.table("games")
