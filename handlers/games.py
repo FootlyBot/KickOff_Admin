@@ -20,6 +20,8 @@ from database.games import (
     cancel_game
 )
 
+from keyboards.admin_menu import admin_menu
+
 router = Router()
 
 
@@ -35,19 +37,27 @@ cancel_keyboard = ReplyKeyboardMarkup(
 )
 
 
+# -------------------------
+# ОТМЕНА СОЗДАНИЯ ИГРЫ
+# -------------------------
+
 @router.message(lambda m: m.text == "❌ Отменить создание")
 async def cancel_create_game(message: Message, state: FSMContext):
 
     current_state = await state.get_state()
 
     if not current_state:
-        await message.answer("Нет активного создания игры")
+        await message.answer(
+            "Нет активного создания игры",
+            reply_markup=admin_menu
+        )
         return
 
     await state.clear()
 
     await message.answer(
-        "❌ Создание игры отменено"
+        "❌ Создание игры отменено",
+        reply_markup=admin_menu
     )
 
 
@@ -116,7 +126,17 @@ async def save_game(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    admin = get_admin_by_telegram_id(message.from_user.id)[0]
+    admin = get_admin_by_telegram_id(message.from_user.id)
+
+    if not admin:
+        await message.answer(
+            "🚫 Нет доступа",
+            reply_markup=admin_menu
+        )
+        await state.clear()
+        return
+
+    admin = admin[0]
 
     try:
         game_date = datetime.strptime(
@@ -126,16 +146,20 @@ async def save_game(message: Message, state: FSMContext):
 
     except ValueError:
         await message.answer(
-            "⚠️ Неверный формат даты",
+            "⚠️ Неверный формат даты.\n\nПример: 25.12.2026 19:30",
             reply_markup=cancel_keyboard
         )
         return
 
     try:
         max_players = int(message.text)
+
+        if max_players <= 0:
+            raise ValueError()
+
     except ValueError:
         await message.answer(
-            "⚠️ Введите число",
+            "⚠️ Введите корректное количество игроков числом",
             reply_markup=cancel_keyboard
         )
         return
@@ -148,6 +172,8 @@ async def save_game(message: Message, state: FSMContext):
         max_players=max_players
     )
 
+    await state.clear()
+
     await message.answer(
         f"""
 🎉 <b>ИГРА СОЗДАНА!</b>
@@ -157,10 +183,9 @@ async def save_game(message: Message, state: FSMContext):
 📅 {data['game_date']}
 👥 0/{max_players}
 """,
-        parse_mode="HTML"
+        parse_mode="HTML",
+        reply_markup=admin_menu
     )
-
-    await state.clear()
 
 
 # -------------------------
@@ -224,7 +249,7 @@ async def my_games(message: Message):
 @router.callback_query(F.data.startswith("cancel_"))
 async def cancel_game_handler(callback: CallbackQuery):
 
-    game_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_", 1)[1]
 
     cancel_game(game_id)
 
