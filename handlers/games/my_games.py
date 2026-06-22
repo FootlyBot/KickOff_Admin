@@ -19,7 +19,7 @@ async def my_games(message: Message):
     games = get_games_by_admin(admin[0]["id"])
 
     if not games:
-        await message.answer("📭 Нет игр")
+        await message.answer("📭У вас пока нет игр")
         return
 
     for game in games:
