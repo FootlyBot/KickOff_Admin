@@ -16,27 +16,44 @@ async def my_games(message: Message):
         await message.answer("🚫 Нет доступа")
         return
 
-    games = get_games_by_admin(admin[0]["id"])
+    admin = admin[0]
+
+    games = get_games_by_admin(admin["id"])
 
     if not games:
-        await message.answer("📭У вас пока нет игр")
+        await message.answer("📭 У вас пока нет игр")
         return
 
     for game in games:
+
+        status_icon = "🟢" if game["status"] == "active" else "🔴"
 
         keyboard = None
 
         if game["status"] == "active":
             keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(
-                        text="❌ Отменить",
-                        callback_data=f"cancel_{game['id']}"
-                    )]
+                    [
+                        InlineKeyboardButton(
+                            text="🚀 Начать матч",
+                            callback_data=f"start_match_{game['id']}"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text="❌ Отменить",
+                            callback_data=f"cancel_{game['id']}"
+                        )
+                    ]
                 ]
             )
 
         await message.answer(
-            f"{game['field_name']}\n📍 {game['address']}",
+            f"{status_icon} <b>{game['field_name']}</b>\n"
+            f"📍 {game['address']}\n"
+            f"📅 {game['game_date']}\n"
+            f"👥 {game['current_players']}/{game['max_players']}\n"
+            f"⚡ {game['status']}",
+            parse_mode="HTML",
             reply_markup=keyboard
         )
