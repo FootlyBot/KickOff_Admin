@@ -1,35 +1,14 @@
 from aiogram import Router, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
 from database.admins import get_admin_by_telegram_id
-from database.games import get_games_by_admin, get_user, get_current_players_count
+from database.games import get_games_by_admin, get_current_players_count
 from database.matches import create_teams_for_game
-from database.supabase_client import supabase
-
-from keyboards.admin_menu import admin_menu
-from keyboards.match_menu import match_menu
 
 router = Router()
 
 
-def format_user(user_id: int) -> str:
-    user = get_user(user_id)
-
-    if not user:
-        return str(user_id)
-
-    name = user.get("first_name") or "NoName"
-    username = user.get("username")
-
-    if username:
-        return f"{name}/@{username}"
-    return name
-
-
-# =========================
-# MY GAMES
-# =========================
-@router.message(lambda m: m.text == "📋 Мои игры")
+@router.message(F.text == "📋 Мои игры")
 async def my_games(message: Message):
 
     admin = get_admin_by_telegram_id(message.from_user.id)
@@ -49,7 +28,6 @@ async def my_games(message: Message):
     for game in games:
 
         status_icon = "🟢" if game["status"] == "active" else "🔴"
-
         current_players = get_current_players_count(game["id"])
 
         keyboard = None
@@ -69,12 +47,6 @@ async def my_games(message: Message):
                             text="⚽️ Начать матчи",
                             callback_data=f"start_match_{game['id']}"
                         )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            text="❌ Отменить",
-                            callback_data=f"cancel_{game['id']}"
-                        )
                     ]
                 ]
             )
@@ -90,17 +62,10 @@ async def my_games(message: Message):
         )
 
 
-# =========================
-# START MATCHES
-# =========================
 @router.callback_query(F.data.startswith("start_match_"))
-async def start_match(callback: CallbackQuery):
+async def start_match(callback):
 
     game_id = callback.data.split("_")[2]
-
-    supabase.table("games").update({
-        "is_running": True
-    }).eq("id", game_id).execute()
 
     teams, error = create_teams_for_game(game_id)
 
@@ -108,62 +73,29 @@ async def start_match(callback: CallbackQuery):
         await callback.message.answer(f"🚫 {error}")
         return
 
+    from database.supabase_client import supabase
+    from keyboards.match_menu import match_menu
+
+    supabase.table("games").update({
+        "is_running": True
+    }).eq("id", game_id).execute()
+
     text = "👥 <b>Команды сформированы</b>\n\n"
 
     for t in teams:
         text += f"{t['name']}\n"
 
         for i, p in enumerate(t["players"], 1):
-            text += f"{i}. {format_user(p['user_id'])}\n"
+            text += f"{i}. {p['display']}\n"
 
         text += "\n"
 
     await callback.message.answer(text, parse_mode="HTML")
 
     await callback.message.answer(
-        "🎮 <b>Матчи начались</b>",
+        "🎮 Матчи начались",
         reply_markup=match_menu,
         parse_mode="HTML"
     )
 
     await callback.answer()
-
-
-# =========================
-# FINISH MATCHES
-# =========================
-@router.message(F.text == "🏁 Завершить матчи")
-async def finish_matches(message: Message):
-
-    admin = get_admin_by_telegram_id(message.from_user.id)
-
-    if not admin:
-        await message.answer("🚫 Нет доступа")
-        return
-
-    admin = admin[0]
-
-    games = get_games_by_admin(admin["id"])
-
-    active_game = None
-
-    for g in games:
-        if g.get("is_running"):
-            active_game = g
-            break
-
-    if not active_game:
-        await message.answer("⚠️ Нет активной игры")
-        return
-
-    game_id = active_game["id"]
-
-    supabase.table("games").update({
-        "is_running": False,
-        "status": "finished"
-    }).eq("id", game_id).execute()
-
-    await message.answer(
-        "🏁 Матчи завершены",
-        reply_markup=admin_menu
-    )

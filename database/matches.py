@@ -3,13 +3,16 @@ import random
 
 
 TEAM_COLORS = [
-    {"name": "🟡 YELLOW TEAM", "short": "yellow"},
-    {"name": "🔴 RED TEAM", "short": "red"},
-    {"name": "🟢 GREEN TEAM", "short": "green"},
-    {"name": "🔵 BLUE TEAM", "short": "blue"},
+    {"name": "🟡 YELLOW TEAM"},
+    {"name": "🔴 RED TEAM"},
+    {"name": "🟢 GREEN TEAM"},
+    {"name": "🔵 BLUE TEAM"},
 ]
 
 
+# =========================
+# PLAYERS
+# =========================
 def get_game_players(game_id: str):
     res = (
         supabase.table("game_players")
@@ -21,19 +24,42 @@ def get_game_players(game_id: str):
     return res.data or []
 
 
-def create_team(game_id: str, team_name: str):
+def get_user_display(user_id: int) -> str:
+    res = (
+        supabase.table("users")
+        .select("first_name, username")
+        .eq("telegram_id", user_id)
+        .single()
+        .execute()
+    )
+
+    user = res.data
+
+    if not user:
+        return str(user_id)
+
+    if user.get("username"):
+        return f"{user['first_name']}/@{user['username']}"
+
+    return user["first_name"]
+
+
+# =========================
+# TEAMS
+# =========================
+def create_team(game_id: str, name: str):
     res = (
         supabase.table("teams")
         .insert({
             "game_id": game_id,
-            "team_name": team_name
+            "team_name": name
         })
         .execute()
     )
     return res.data[0]
 
 
-def assign_player_to_team(game_id: str, user_id: int, team_id: str):
+def assign_player(game_id: str, user_id: int, team_id: str):
     supabase.table("game_players").update({
         "team_id": team_id
     }).eq("game_id", game_id).eq("user_id", user_id).execute()
@@ -49,6 +75,7 @@ def init_team_result(team_id: str):
 
 
 def create_teams_for_game(game_id: str):
+
     players = get_game_players(game_id)
 
     if not players:
@@ -56,7 +83,7 @@ def create_teams_for_game(game_id: str):
 
     random.shuffle(players)
 
-    teams_data = []
+    teams = []
     team_index = 0
 
     for i in range(0, len(players), 5):
@@ -64,21 +91,67 @@ def create_teams_for_game(game_id: str):
         if team_index >= 4:
             break
 
-        chunk = players[i:i + 5]
-        team_color = TEAM_COLORS[team_index]
+        chunk = players[i:i+5]
+        color = TEAM_COLORS[team_index]
 
-        team = create_team(game_id, team_color["name"])
+        team = create_team(game_id, color["name"])
         init_team_result(team["team_id"])
 
-        for p in chunk:
-            assign_player_to_team(game_id, p["user_id"], team["team_id"])
+        enriched_players = []
 
-        teams_data.append({
-            "team": team,
-            "players": chunk,
-            "name": team_color["name"]
+        for p in chunk:
+            assign_player(game_id, p["user_id"], team["team_id"])
+
+            enriched_players.append({
+                "user_id": p["user_id"],
+                "display": get_user_display(p["user_id"])
+            })
+
+        teams.append({
+            "name": color["name"],
+            "players": enriched_players
         })
 
         team_index += 1
 
-    return teams_data, None
+    return teams, None
+
+
+# =========================
+# TABLE
+# =========================
+def get_team_table(game_id: str):
+
+    res = (
+        supabase.table("teams")
+        .select("team_id, team_name, team_results(wins,draws,losses)")
+        .eq("game_id", game_id)
+        .execute()
+    )
+
+    data = res.data or []
+
+    text = "📊 <b>Турнирная таблица</b>\n\n"
+    text += "Команда | В | Н | П\n\n"
+
+    for t in data:
+        stats = t.get("team_results", [{}])[0]
+
+        wins = stats.get("wins", 0)
+        draws = stats.get("draws", 0)
+        losses = stats.get("losses", 0)
+
+        text += f"{t['team_name']} | {wins} | {draws} | {losses}\n"
+
+    return text
+
+
+# =========================
+# FINISH GAME
+# =========================
+def finish_game(game_id: str):
+
+    supabase.table("games").update({
+        "is_running": False,
+        "status": "finished"
+    }).eq("id", game_id).execute()
