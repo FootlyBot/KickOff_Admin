@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from database.admins import get_admin_by_telegram_id
-from database.games import get_games_by_admin
+from database.games import get_games_by_admin, get_current_players_count
 from database.matches import create_teams_for_game
 from database.supabase_client import supabase
 
@@ -35,7 +35,7 @@ async def my_games(message: Message):
 
         keyboard = None
 
-        # ❗ если игра уже идёт — блокируем управление
+        # если игра идёт — блокируем управление
         if game.get("is_running"):
             await message.answer(
                 f"⚠️ <b>{game['field_name']}</b>\n"
@@ -43,6 +43,8 @@ async def my_games(message: Message):
                 parse_mode="HTML"
             )
             continue
+
+        current_players = get_current_players_count(game["id"])
 
         if game["status"] == "active":
             keyboard = InlineKeyboardMarkup(
@@ -66,7 +68,7 @@ async def my_games(message: Message):
             f"{status_icon} <b>{game['field_name']}</b>\n"
             f"📍 {game['address']}\n"
             f"📅 {game['game_date']}\n"
-            f"👥 {game['current_players']}/{game['max_players']}\n"
+            f"👥 {current_players}/{game['max_players']}\n"
             f"⚡ {game['status']}",
             parse_mode="HTML",
             reply_markup=keyboard
@@ -78,7 +80,7 @@ async def start_match(callback: CallbackQuery):
 
     game_id = callback.data.split("_")[2]
 
-    # ❗ блокируем игру
+    # блокируем игру
     supabase.table("games").update({
         "is_running": True
     }).eq("id", game_id).execute()
@@ -101,7 +103,6 @@ async def start_match(callback: CallbackQuery):
 
     await callback.message.answer(text, parse_mode="HTML")
 
-    # ❗ переключаем пользователя в режим матчей
     await callback.message.answer(
         "🎮 <b>Матчи начались</b>",
         reply_markup=match_menu,

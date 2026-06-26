@@ -77,3 +77,18 @@ def delete_old_cancelled_games():
     )
 
     return res.data
+
+# -------------------------
+# Получение актулаьного количества игроков
+# -------------------------
+
+
+def get_current_players_count(game_id: str) -> int:
+    res = (
+        supabase.table("game_players")
+        .select("id", count="exact")
+        .eq("game_id", game_id)
+        .execute()
+    )
+    return res.count or 0
+
