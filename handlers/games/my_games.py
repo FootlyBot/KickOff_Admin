@@ -1,8 +1,11 @@
-from aiogram import Router
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Router, F
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin
+from database.matches import create_teams_for_game
+
+from keyboards.admin_menu import admin_menu
 
 router = Router()
 
@@ -57,3 +60,39 @@ async def my_games(message: Message):
             parse_mode="HTML",
             reply_markup=keyboard
         )
+
+
+# ✅ НОВЫЙ CALLBACK: формирование команд
+@router.callback_query(F.data.startswith("start_match_"))
+async def start_match(callback: CallbackQuery):
+
+    game_id = callback.data.split("_")[2]
+
+    teams, error = create_teams_for_game(game_id)
+
+    if error:
+        await callback.message.answer(f"🚫 {error}")
+        return
+
+    text = "Команды сформированы 👥\n\n"
+
+    for t in teams:
+        text += f"{t['name']}\n"
+
+        for i, p in enumerate(t["players"], 1):
+            text += f"{i}. {p['user_id']}\n"
+
+        text += "\n"
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="➡️ Следующий матч", callback_data="next_match")],
+            [InlineKeyboardButton(text="📊 Таблица", callback_data=f"table_{game_id}")],
+            [InlineKeyboardButton(text="🏁 Закончить матчи", callback_data=f"finish_{game_id}")]
+        ]
+    )
+
+    await callback.message.answer(text)
+    await callback.message.answer("Меню матчей:", reply_markup=keyboard)
+
+    await callback.answer()
