@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from database.admins import get_admin_by_telegram_id
-from database.games import get_games_by_admin, get_current_players_count
+from database.games import get_games_by_admin
 from database.matches import create_teams_for_game
 from database.supabase_client import supabase
 
@@ -12,6 +12,19 @@ from keyboards.match_menu import match_menu
 router = Router()
 
 
+def get_current_players_count(game_id: str) -> int:
+    res = (
+        supabase.table("game_players")
+        .select("id", count="exact")
+        .eq("game_id", game_id)
+        .execute()
+    )
+    return res.count or 0
+
+
+# =========================
+# MY GAMES
+# =========================
 @router.message(lambda m: m.text == "📋 Мои игры")
 async def my_games(message: Message):
 
@@ -33,9 +46,11 @@ async def my_games(message: Message):
 
         status_icon = "🟢" if game["status"] == "active" else "🔴"
 
+        current_players = get_current_players_count(game["id"])
+
         keyboard = None
 
-        # если игра идёт — блокируем управление
+        # ❗ если игра идёт — не даём запускать снова
         if game.get("is_running"):
             await message.answer(
                 f"⚠️ <b>{game['field_name']}</b>\n"
@@ -43,8 +58,6 @@ async def my_games(message: Message):
                 parse_mode="HTML"
             )
             continue
-
-        current_players = get_current_players_count(game["id"])
 
         if game["status"] == "active":
             keyboard = InlineKeyboardMarkup(
@@ -75,12 +88,14 @@ async def my_games(message: Message):
         )
 
 
+# =========================
+# START MATCHES
+# =========================
 @router.callback_query(F.data.startswith("start_match_"))
 async def start_match(callback: CallbackQuery):
 
     game_id = callback.data.split("_")[2]
 
-    # блокируем игру
     supabase.table("games").update({
         "is_running": True
     }).eq("id", game_id).execute()
@@ -110,3 +125,45 @@ async def start_match(callback: CallbackQuery):
     )
 
     await callback.answer()
+
+
+# =========================
+# FINISH MATCHES (FIXED)
+# =========================
+@router.message(F.text == "🏁 Завершить матчи")
+async def finish_matches(message: Message):
+
+    admin = get_admin_by_telegram_id(message.from_user.id)
+
+    if not admin:
+        await message.answer("🚫 Нет доступа")
+        return
+
+    admin = admin[0]
+
+    games = get_games_by_admin(admin["id"])
+
+    active_game = None
+
+    for g in games:
+        if g.get("is_running"):
+            active_game = g
+            break
+
+    if not active_game:
+        await message.answer("⚠️ Нет активной игры")
+        return
+
+    game_id = active_game["id"]
+
+    # ❗ выключаем режим игры
+    supabase.table("games").update({
+        "is_running": False,
+        "status": "finished"
+    }).eq("id", game_id).execute()
+
+    # ❗ возвращаем admin меню
+    await message.answer(
+        "🏁 Матчи завершены",
+        reply_markup=admin_menu
+    )
