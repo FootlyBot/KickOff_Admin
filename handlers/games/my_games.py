@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from database.admins import get_admin_by_telegram_id
-from database.games import get_games_by_admin, get_user
+from database.games import get_games_by_admin, get_user, get_current_players_count
 from database.matches import create_teams_for_game
 from database.supabase_client import supabase
 
@@ -10,17 +10,6 @@ from keyboards.admin_menu import admin_menu
 from keyboards.match_menu import match_menu
 
 router = Router()
-
-
-def get_current_players_count(game_id: str) -> int:
-    res = (
-        supabase.table("game_players")
-        .select("id", count="exact")
-        .eq("game_id", game_id)
-        .execute()
-    )
-    return res.count or 0
-
 
 
 def format_user(user_id: int) -> str:
