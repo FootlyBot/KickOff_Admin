@@ -35,7 +35,7 @@ async def my_games(message: Message):
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="🚀 Начать матч",
+                            text="⚽️ Начать матчи",
                             callback_data=f"start_match_{game['id']}"
                         )
                     ],
