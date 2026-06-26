@@ -135,7 +135,16 @@ def get_team_table(game_id: str):
     text += "Команда | В | Н | П\n\n"
 
     for t in data:
-        stats = t.get("team_results", [{}])[0]
+
+        raw_stats = t.get("team_results")
+
+        # 🧠 FIX: нормализация Supabase response
+        if isinstance(raw_stats, list):
+            stats = raw_stats[0] if raw_stats else {}
+        elif isinstance(raw_stats, dict):
+            stats = raw_stats
+        else:
+            stats = {}
 
         wins = stats.get("wins", 0)
         draws = stats.get("draws", 0)
