@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from database.admins import get_admin_by_telegram_id
-from database.games import get_games_by_admin
+from database.games import get_games_by_admin, get_user
 from database.matches import create_teams_for_game
 from database.supabase_client import supabase
 
@@ -20,6 +20,21 @@ def get_current_players_count(game_id: str) -> int:
         .execute()
     )
     return res.count or 0
+
+
+
+def format_user(user_id: int) -> str:
+    user = get_user(user_id)
+
+    if not user:
+        return str(user_id)
+
+    name = user.get("first_name") or "NoName"
+    username = user.get("username")
+
+    if username:
+        return f"{name}/@{username}"
+    return name
 
 
 # =========================
@@ -50,11 +65,9 @@ async def my_games(message: Message):
 
         keyboard = None
 
-        # ❗ если игра идёт — не даём запускать снова
         if game.get("is_running"):
             await message.answer(
-                f"⚠️ <b>{game['field_name']}</b>\n"
-                f"Игра уже идёт",
+                f"⚠️ <b>{game['field_name']}</b>\nИгра уже идёт",
                 parse_mode="HTML"
             )
             continue
@@ -112,7 +125,7 @@ async def start_match(callback: CallbackQuery):
         text += f"{t['name']}\n"
 
         for i, p in enumerate(t["players"], 1):
-            text += f"{i}. {p['user_id']}\n"
+            text += f"{i}. {format_user(p['user_id'])}\n"
 
         text += "\n"
 
@@ -128,7 +141,7 @@ async def start_match(callback: CallbackQuery):
 
 
 # =========================
-# FINISH MATCHES (FIXED)
+# FINISH MATCHES
 # =========================
 @router.message(F.text == "🏁 Завершить матчи")
 async def finish_matches(message: Message):
@@ -156,13 +169,11 @@ async def finish_matches(message: Message):
 
     game_id = active_game["id"]
 
-    # ❗ выключаем режим игры
     supabase.table("games").update({
         "is_running": False,
         "status": "finished"
     }).eq("id", game_id).execute()
 
-    # ❗ возвращаем admin меню
     await message.answer(
         "🏁 Матчи завершены",
         reply_markup=admin_menu

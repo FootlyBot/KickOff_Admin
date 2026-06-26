@@ -92,3 +92,16 @@ def get_current_players_count(game_id: str) -> int:
     )
     return res.count or 0
 
+# =========================
+# GET USER INFO (NEW)
+# =========================
+def get_user(user_id: int):
+    res = (
+        supabase.table("users")
+        .select("first_name, username, telegram_id")
+        .eq("telegram_id", user_id)
+        .single()
+        .execute()
+    )
+    return res.data
+
