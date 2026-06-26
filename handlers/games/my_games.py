@@ -4,8 +4,10 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin
 from database.matches import create_teams_for_game
+from database.supabase_client import supabase
 
 from keyboards.admin_menu import admin_menu
+from keyboards.match_menu import match_menu
 
 router = Router()
 
@@ -32,6 +34,15 @@ async def my_games(message: Message):
         status_icon = "🟢" if game["status"] == "active" else "🔴"
 
         keyboard = None
+
+        # ❗ если игра уже идёт — блокируем управление
+        if game.get("is_running"):
+            await message.answer(
+                f"⚠️ <b>{game['field_name']}</b>\n"
+                f"Игра уже идёт",
+                parse_mode="HTML"
+            )
+            continue
 
         if game["status"] == "active":
             keyboard = InlineKeyboardMarkup(
@@ -62,11 +73,15 @@ async def my_games(message: Message):
         )
 
 
-# ✅ НОВЫЙ CALLBACK: формирование команд
 @router.callback_query(F.data.startswith("start_match_"))
 async def start_match(callback: CallbackQuery):
 
     game_id = callback.data.split("_")[2]
+
+    # ❗ блокируем игру
+    supabase.table("games").update({
+        "is_running": True
+    }).eq("id", game_id).execute()
 
     teams, error = create_teams_for_game(game_id)
 
@@ -74,7 +89,7 @@ async def start_match(callback: CallbackQuery):
         await callback.message.answer(f"🚫 {error}")
         return
 
-    text = "Команды сформированы 👥\n\n"
+    text = "👥 <b>Команды сформированы</b>\n\n"
 
     for t in teams:
         text += f"{t['name']}\n"
@@ -84,15 +99,13 @@ async def start_match(callback: CallbackQuery):
 
         text += "\n"
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="➡️ Следующий матч", callback_data="next_match")],
-            [InlineKeyboardButton(text="📊 Таблица", callback_data=f"table_{game_id}")],
-            [InlineKeyboardButton(text="🏁 Закончить матчи", callback_data=f"finish_{game_id}")]
-        ]
-    )
+    await callback.message.answer(text, parse_mode="HTML")
 
-    await callback.message.answer(text)
-    await callback.message.answer("Меню матчей:", reply_markup=keyboard)
+    # ❗ переключаем пользователя в режим матчей
+    await callback.message.answer(
+        "🎮 <b>Матчи начались</b>",
+        reply_markup=match_menu,
+        parse_mode="HTML"
+    )
 
     await callback.answer()
