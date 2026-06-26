@@ -136,14 +136,18 @@ def get_team_table(game_id: str):
 
     for t in data:
 
-        raw_stats = t.get("team_results")
+        raw = t.get("team_results")
 
-        # 🧠 FIX: нормализация Supabase response
-        if isinstance(raw_stats, list):
-            stats = raw_stats[0] if raw_stats else {}
-        elif isinstance(raw_stats, dict):
-            stats = raw_stats
-        else:
+        # 🔥 HARD NORMALIZATION (фикс ВСЕХ кейсов)
+        stats = {}
+
+        if isinstance(raw, list) and len(raw) > 0:
+            stats = raw[0] or {}
+
+        elif isinstance(raw, dict):
+            stats = raw
+
+        elif raw is None:
             stats = {}
 
         wins = stats.get("wins", 0)
