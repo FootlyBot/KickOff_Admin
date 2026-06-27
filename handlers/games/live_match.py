@@ -43,22 +43,32 @@ async def goal(message: Message):
         await message.answer("📋 Игровое меню восстановлено", reply_markup=game_menu)
         return
 
+    # ✅ БЕРЁМ ИМЕНА ИЗ БД
     team_a = get_team_name(match["team_a_id"])
     team_b = get_team_name(match["team_b_id"])
 
-    text = message.text.replace("⚽ ", "")
+    # очищаем текст кнопки
+    clicked = message.text.replace("⚽ ", "").strip()
 
-    if text == team_a:
+    # нормализуем
+    team_a_name = team_a.strip()
+    team_b_name = team_b.strip()
+
+    if clicked == team_a_name:
         add_goal(match["id"], "A")
-        await message.answer(f"⚽ Гол за {team_a}")
+        await message.answer(f"⚽ Гол за {team_a_name}")
 
-    elif text == team_b:
+    elif clicked == team_b_name:
         add_goal(match["id"], "B")
-        await message.answer(f"⚽ Гол за {team_b}")
+        await message.answer(f"⚽ Гол за {team_b_name}")
 
     else:
-        await message.answer("Не удалось определить команду")
-
+        await message.answer(
+            f"Не удалось определить команду\n"
+            f"Кнопка: {clicked}\n"
+            f"A: {team_a_name}\n"
+            f"B: {team_b_name}"
+        )
 
 # =========================
 # FINISH MATCH
