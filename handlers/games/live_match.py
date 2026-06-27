@@ -4,10 +4,8 @@ from aiogram.types import Message
 from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin
 
-from database.matches_service import get_active_match, add_goal
-from database.results_service import finish_match
+from database.matches_service import get_active_match, add_goal, finish_match
 
-from keyboards.game_menu import game_menu
 
 router = Router()
 
@@ -23,14 +21,16 @@ def get_game_id(admin_id):
 # =========================
 # GOAL
 # =========================
-@router.message(F.text.startswith("⚽ ГОЛ!"))
+@router.message(F.text.startswith("⚽"))
 async def goal(message: Message):
 
     admin = get_admin_by_telegram_id(message.from_user.id)
     if not admin:
         return
 
-    game_id = get_game_id(admin[0]["id"])
+    admin = admin[0]
+
+    game_id = get_game_id(admin["id"])
     if not game_id:
         await message.answer("Нет активной игры")
         return
@@ -40,22 +40,21 @@ async def goal(message: Message):
         await message.answer("Нет активного матча")
         return
 
-    # получаем команды матча
+    text = message.text
+
     team_a_name = match.get("team_a_name")
     team_b_name = match.get("team_b_name")
 
-    text = message.text
-
     if team_a_name in text:
         add_goal(match["id"], "A")
-        await message.answer(f"⚽ Гол: {team_a_name}")
+        await message.answer(f"⚽ Гол за {team_a_name}")
 
     elif team_b_name in text:
         add_goal(match["id"], "B")
-        await message.answer(f"⚽ Гол: {team_b_name}")
+        await message.answer(f"⚽ Гол за {team_b_name}")
 
     else:
-        await message.answer("Команда не определена")
+        await message.answer("Не удалось определить команду")
 
 
 # =========================
@@ -68,17 +67,18 @@ async def finish(message: Message):
     if not admin:
         return
 
-    game_id = get_game_id(admin[0]["id"])
+    admin = admin[0]
+
+    game_id = get_game_id(admin["id"])
     if not game_id:
+        await message.answer("Нет активной игры")
         return
 
     match = get_active_match(game_id)
     if not match:
+        await message.answer("Нет активного матча")
         return
 
     finish_match(match["id"])
 
-    await message.answer(
-        "🏁 Матч завершён",
-        reply_markup=game_menu
-    )
+    await message.answer("🏁 Матч завершён")
