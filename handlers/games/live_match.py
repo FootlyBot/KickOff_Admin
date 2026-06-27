@@ -1,14 +1,13 @@
 from aiogram import Router, F
 from aiogram.types import Message
 
-from database.results_service import finish_match
-from database.matches_service import get_active_match, add_goal
-
-
-from database.games import get_games_by_admin
 from database.admins import get_admin_by_telegram_id
+from database.games import get_games_by_admin
 
-from keyboards.match_menu import game_menu
+from database.matches_service import get_active_match, add_goal
+from database.results_service import finish_match
+
+from keyboards.game_menu import game_menu
 
 router = Router()
 
@@ -22,7 +21,7 @@ def get_game_id(admin_id):
 
 
 # =========================
-# GOAL HANDLING
+# GOAL
 # =========================
 @router.message(F.text.startswith("⚽ ГОЛ!"))
 async def goal(message: Message):
@@ -41,13 +40,22 @@ async def goal(message: Message):
         await message.answer("Нет активного матча")
         return
 
-    if "🟡" in message.text:
-        add_goal(match["id"], "A")
-        await message.answer("🟡 ГОЛ!")
+    # получаем команды матча
+    team_a_name = match.get("team_a_name")
+    team_b_name = match.get("team_b_name")
 
-    elif "🔴" in message.text:
+    text = message.text
+
+    if team_a_name in text:
+        add_goal(match["id"], "A")
+        await message.answer(f"⚽ Гол: {team_a_name}")
+
+    elif team_b_name in text:
         add_goal(match["id"], "B")
-        await message.answer("🔴 ГОЛ!")
+        await message.answer(f"⚽ Гол: {team_b_name}")
+
+    else:
+        await message.answer("Команда не определена")
 
 
 # =========================

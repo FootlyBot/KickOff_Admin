@@ -5,7 +5,7 @@ from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin, get_current_players_count
 from database.teams_service import create_teams_for_game
 from database.supabase_client import supabase
-from keyboards.match_menu import game_menu
+from keyboards.game_menu import game_menu
 router = Router()
 
 
