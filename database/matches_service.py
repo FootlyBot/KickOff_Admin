@@ -2,6 +2,9 @@ from database.supabase_client import supabase
 import itertools
 
 
+# =========================
+# TEAMS
+# =========================
 def get_teams(game_id: str):
     return (
         supabase.table("teams")
@@ -11,20 +14,47 @@ def get_teams(game_id: str):
     ).data or []
 
 
+def get_team_names(team_a_id: str, team_b_id: str):
+    res = (
+        supabase.table("teams")
+        .select("team_id, team_name")
+        .in_("team_id", [team_a_id, team_b_id])
+        .execute()
+    ).data or []
+
+    mapping = {t["team_id"]: t["team_name"] for t in res}
+
+    return {
+        "team_a_name": mapping.get(team_a_id, "TEAM A"),
+        "team_b_name": mapping.get(team_b_id, "TEAM B"),
+    }
+
+
+# =========================
+# MATCH CORE
+# =========================
 def create_match(game_id: str, a, b, round_num: int):
-    return (
+
+    res = (
         supabase.table("matches")
         .insert({
             "game_id": game_id,
-            "team_a_id": a,
-            "team_b_id": b,
+            "team_a_id": a["team_id"],
+            "team_b_id": b["team_id"],
             "score_team_a": 0,
             "score_team_b": 0,
             "status": "playing",
             "round": round_num
         })
         .execute()
-    ).data[0]
+    )
+
+    match = res.data[0]
+
+    names = get_team_names(match["team_a_id"], match["team_b_id"])
+    match.update(names)
+
+    return match
 
 
 def get_active_match(game_id: str):
@@ -39,6 +69,9 @@ def get_active_match(game_id: str):
     return res.data[0] if res.data else None
 
 
+# =========================
+# ROUND ROBIN
+# =========================
 def generate_round_robin(teams):
     return list(itertools.combinations(teams, 2))
 
@@ -71,14 +104,44 @@ def get_next_match(game_id: str):
 
     for a, b in pairs:
         if (a["team_id"], b["team_id"]) not in played:
-            return create_match(game_id, a["team_id"], b["team_id"], round_num)
+            return create_match(game_id, a, b, round_num)
 
         round_num += 1
 
     return None
 
 
+# =========================
+# GOALS
+# =========================
 def add_goal(match_id: str, side: str):
+
+    match = (
+        supabase.table("matches")
+        .select("*")
+        .eq("id", match_id)
+        .single()
+        .execute()
+    ).data
+
+    if not match or match["status"] != "playing":
+        return
+
+    if side == "A":
+        supabase.table("matches").update({
+            "score_team_a": match["score_team_a"] + 1
+        }).eq("id", match_id).execute()
+
+    elif side == "B":
+        supabase.table("matches").update({
+            "score_team_b": match["score_team_b"] + 1
+        }).eq("id", match_id).execute()
+
+
+# =========================
+# FINISH MATCH
+# =========================
+def finish_match(match_id: str):
 
     match = (
         supabase.table("matches")
@@ -91,12 +154,50 @@ def add_goal(match_id: str, side: str):
     if not match:
         return
 
-    if side == "A":
-        supabase.table("matches").update({
-            "score_team_a": match["score_team_a"] + 1
-        }).eq("id", match_id).execute()
+    team_a = match["team_a_id"]
+    team_b = match["team_b_id"]
 
-    if side == "B":
-        supabase.table("matches").update({
-            "score_team_b": match["score_team_b"] + 1
-        }).eq("id", match_id).execute()
+    a = match["score_team_a"]
+    b = match["score_team_b"]
+
+    if a > b:
+        update_result(team_a, win=1)
+        update_result(team_b, loss=1)
+
+    elif b > a:
+        update_result(team_b, win=1)
+        update_result(team_a, loss=1)
+
+    else:
+        update_result(team_a, draw=1)
+        update_result(team_b, draw=1)
+
+    supabase.table("matches").update({
+        "status": "finished"
+    }).eq("id", match_id).execute()
+
+
+def update_result(team_id: str, win=0, draw=0, loss=0):
+
+    existing = (
+        supabase.table("team_results")
+        .select("*")
+        .eq("team_id", team_id)
+        .single()
+        .execute()
+    ).data
+
+    if not existing:
+        supabase.table("team_results").insert({
+            "team_id": team_id,
+            "wins": win,
+            "draws": draw,
+            "losses": loss
+        }).execute()
+        return
+
+    supabase.table("team_results").update({
+        "wins": existing["wins"] + win,
+        "draws": existing["draws"] + draw,
+        "losses": existing["losses"] + loss
+    }).eq("team_id", team_id).execute()
