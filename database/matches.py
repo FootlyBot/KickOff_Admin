@@ -1,6 +1,7 @@
 from database.supabase_client import supabase
 import itertools
 
+
 # =========================
 # TEAMS
 # =========================
@@ -49,14 +50,11 @@ def get_active_match(game_id: str):
 
 
 # =========================
-# ROUND ROBIN
+# ROUND ROBIN (FIXED)
 # =========================
-def generate_round_robin_pairs(teams):
-    return list(itertools.combinations(teams, 2))
-
-
 def get_next_match(game_id: str):
 
+    # если уже идёт матч — не создаём новый
     active = get_active_match(game_id)
     if active:
         return active
@@ -66,7 +64,7 @@ def get_next_match(game_id: str):
     if len(teams) < 2:
         return None
 
-    pairs = generate_round_robin_pairs(teams)
+    pairs = list(itertools.combinations(teams, 2))
 
     played_res = (
         supabase.table("matches")
@@ -76,17 +74,25 @@ def get_next_match(game_id: str):
     )
 
     played = set()
+
+    # нормализация сыгранных матчей
     for m in played_res.data or []:
-        played.add((m["team_a_id"], m["team_b_id"]))
-        played.add((m["team_b_id"], m["team_a_id"]))
+        a = m["team_a_id"]
+        b = m["team_b_id"]
+        played.add(tuple(sorted([a, b])))
 
-    round_num = 1
-
+    # поиск следующего матча
     for a, b in pairs:
-        if (a["team_id"], b["team_id"]) not in played:
-            return create_match(game_id, a["team_id"], b["team_id"], round_num)
 
-        round_num += 1
+        pair = tuple(sorted([a["team_id"], b["team_id"]]))
+
+        if pair not in played:
+            return create_match(
+                game_id,
+                a["team_id"],
+                b["team_id"],
+                1
+            )
 
     return None
 
@@ -159,6 +165,9 @@ def finish_match(match_id: str):
     }).eq("id", match_id).execute()
 
 
+# =========================
+# TEAM RESULTS
+# =========================
 def update_result(team_id: str, win=0, draw=0, loss=0):
 
     existing = (
@@ -186,7 +195,7 @@ def update_result(team_id: str, win=0, draw=0, loss=0):
 
 
 # =========================
-# TABLE (НЕ ТРОГАЕМ)
+# TABLE (НЕ ТРОГАЕМ — ТВОЙ UI)
 # =========================
 def get_team_table(game_id: str):
 
@@ -211,10 +220,8 @@ def get_team_table(game_id: str):
 
         if isinstance(raw, list):
             stats = raw[0] if raw else {}
-        elif isinstance(raw, dict):
-            stats = raw
         else:
-            stats = {}
+            stats = raw or {}
 
         wins = stats.get("wins", 0)
         draws = stats.get("draws", 0)
