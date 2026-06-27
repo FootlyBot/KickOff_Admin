@@ -5,7 +5,7 @@ from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin
 
 from database.matches_service import get_active_match, add_goal, finish_match
-
+from keyboards.admin_menu import admin_menu
 
 router = Router()
 
@@ -82,3 +82,7 @@ async def finish(message: Message):
     finish_match(match["id"])
 
     await message.answer("🏁 Матч завершён")
+    await message.answer(
+        "📋 Админ меню восстановлено",
+        reply_markup=admin_menu
+    )
