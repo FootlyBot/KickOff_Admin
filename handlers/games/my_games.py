@@ -38,6 +38,7 @@ async def my_games(message: Message):
                 f"⚠️ <b>{game['field_name']}</b>\nИгра уже идёт",
                 parse_mode="HTML"
             )
+            await message.answer("📋 Игровое меню восстановлено", reply_markup=game_menu)
             continue
 
         if game["status"] == "active":
