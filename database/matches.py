@@ -132,32 +132,40 @@ def get_team_table(game_id: str):
     data = res.data or []
 
     text = "📊 <b>Турнирная таблица</b>\n\n"
-    text += "Команда | В | Н | П\n\n"
+    text += "<pre>"
+
+    text += "┌──────────────────────┬───┬───┬───┐\n"
+    text += "│ Команда              │ В │ Н │ П │\n"
+    text += "├──────────────────────┼───┼───┼───┤\n"
 
     for t in data:
 
         raw = t.get("team_results")
 
-        # 🔥 HARD NORMALIZATION (фикс ВСЕХ кейсов)
-        stats = {}
-
-        if isinstance(raw, list) and len(raw) > 0:
-            stats = raw[0] or {}
-
+        if isinstance(raw, list):
+            stats = raw[0] if raw else {}
         elif isinstance(raw, dict):
             stats = raw
-
-        elif raw is None:
+        else:
             stats = {}
 
         wins = stats.get("wins", 0)
         draws = stats.get("draws", 0)
         losses = stats.get("losses", 0)
 
-        text += f"{t['team_name']} | {wins} | {draws} | {losses}\n"
+        team = t["team_name"][:20]
+
+        text += (
+            f"│ {team:<20} │"
+            f"{wins:^3}│"
+            f"{draws:^3}│"
+            f"{losses:^3}│\n"
+        )
+
+    text += "└──────────────────────┴───┴───┴───┘"
+    text += "</pre>"
 
     return text
-
 
 # =========================
 # FINISH GAME
