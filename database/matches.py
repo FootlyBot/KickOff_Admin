@@ -133,10 +133,9 @@ def get_team_table(game_id: str):
 
     text = "📊 <b>Турнирная таблица</b>\n\n"
     text += "<pre>"
-
-    text += "┌──────────────────────┬───┬───┬───┐\n"
-    text += "│ Команда              │ В │ Н │ П │\n"
-    text += "├──────────────────────┼───┼───┼───┤\n"
+    text += "┌────┬──────────────┬───┬───┬───┐\n"
+    text += "│    │ Команда      │ В │ Н │ П │\n"
+    text += "├────┼──────────────┼───┼───┼───┤\n"
 
     for t in data:
 
@@ -153,20 +152,28 @@ def get_team_table(game_id: str):
         draws = stats.get("draws", 0)
         losses = stats.get("losses", 0)
 
-        team = t["team_name"][:20]
+        # team_name = "🟢 GREEN TEAM"
+        parts = t["team_name"].split(" ", 1)
+
+        if len(parts) == 2:
+            icon = parts[0]
+            name = parts[1]
+        else:
+            icon = ""
+            name = t["team_name"]
 
         text += (
-            f"│ {team:<20} │"
-            f"{wins:^3}│"
-            f"{draws:^3}│"
-            f"{losses:^3}│\n"
+            f"│ {icon} │ "
+            f"{name:<12} │ "
+            f"{wins:^1} │ "
+            f"{draws:^1} │ "
+            f"{losses:^1} │\n"
         )
 
-    text += "└──────────────────────┴───┴───┴───┘"
+    text += "└────┴──────────────┴───┴───┴───┘"
     text += "</pre>"
 
     return text
-
 # =========================
 # FINISH GAME
 # =========================
