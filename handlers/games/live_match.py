@@ -12,7 +12,7 @@ from database.matches_service import (
 )
 
 from keyboards.admin_menu import admin_menu
-
+from keyboards.game_menu import game_menu
 
 router = Router()
 
@@ -40,7 +40,7 @@ async def goal(message: Message):
 
     if not match:
         await message.answer("Нет активного матча")
-        await message.answer("📋 Админ меню восстановлено", reply_markup=admin_menu)
+        await message.answer("📋 Игровое меню восстановлено", reply_markup=game_menu)
         return
 
     team_a = get_team_name(match["team_a_id"])
@@ -79,4 +79,4 @@ async def finish(message: Message):
     finish_match(match["id"])
 
     await message.answer("🏁 Матч завершён")
-    await message.answer("📋 Админ меню восстановлено", reply_markup=admin_menu)
+    await message.answer("📋 Игровое меню восстановлено", reply_markup=game_menu)
