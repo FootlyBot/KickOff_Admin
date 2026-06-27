@@ -1,7 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
-match_menu = ReplyKeyboardMarkup(
+game_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="➡️ Следующий матч")],
         [KeyboardButton(text="📊 Таблица")],
