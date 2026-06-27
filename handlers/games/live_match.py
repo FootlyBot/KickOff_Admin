@@ -1,11 +1,11 @@
 from aiogram import Router, F
 from aiogram.types import Message
 
-from database.matches import (
-    get_active_match,
-    add_goal,
-    finish_match
-)
+from database.results_service import finish_match
+from database.table_service import get_team_table
+from database.teams_service import get_game_players, assign_player, create_teams_for_game
+from database.matches_service import get_active_match, add_goal
+
 
 from database.games import get_games_by_admin
 from database.admins import get_admin_by_telegram_id

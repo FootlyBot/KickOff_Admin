@@ -3,10 +3,14 @@ from aiogram.types import Message
 
 from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin
-from database.matches import (
-    get_team_table,
-    finish_game
-)
+
+from database.table_service import get_team_table
+from database.teams_service import get_game_players, assign_player, create_teams_for_game
+from database.matches_service import get_active_match, add_goal
+from database.game_service import finish_game
+
+
+
 
 from keyboards.admin_menu import admin_menu
 

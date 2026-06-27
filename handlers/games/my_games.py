@@ -3,8 +3,9 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
 from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin, get_current_players_count
-from database.matches import create_teams_for_game
-
+from database.teams_service import create_teams_for_game
+from database.supabase_client import supabase
+from keyboards.match_menu import game_menu
 router = Router()
 
 
@@ -73,8 +74,7 @@ async def start_match(callback):
         await callback.message.answer(f"🚫 {error}")
         return
 
-    from database.supabase_client import supabase
-    from keyboards.match_menu import match_menu
+
 
     supabase.table("games").update({
         "is_running": True
@@ -94,7 +94,7 @@ async def start_match(callback):
 
     await callback.message.answer(
         "🎮 Матчи начались",
-        reply_markup=match_menu,
+        reply_markup=game_menu,
         parse_mode="HTML"
     )
 
