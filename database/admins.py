@@ -45,18 +45,30 @@ def create_admin(
     last_name: str | None = None,
     username: str | None = None,
     role: str = "admin"
-):    
-    res = (
-        supabase.table("admins")
-        .insert({
-            "telegram_id": telegram_id,
-            "first_name": first_name,
-            "last_name": last_name,
-            "username": username,
-            "role": role,
-            "is_active": True
-        })
-        .execute()
-    )
+):
+    existing_admin = get_admin_by_telegram_id(telegram_id)
+
+    admin_data = {
+        "telegram_id": telegram_id,
+        "first_name": first_name,
+        "last_name": last_name,
+        "username": username,
+        "role": role,
+        "is_active": True
+    }
+
+    if existing_admin:
+        res = (
+            supabase.table("admins")
+            .update(admin_data)
+            .eq("telegram_id", telegram_id)
+            .execute()
+        )
+    else:
+        res = (
+            supabase.table("admins")
+            .insert(admin_data)
+            .execute()
+        )
 
     return res.data
