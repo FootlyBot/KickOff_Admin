@@ -167,16 +167,18 @@ def finish_match(match_id: str):
 
 
 def update_result(team_id: str, win=0, draw=0, loss=0):
-
-    res = (
-        supabase.table("team_results")
-        .select("*")
-        .eq("team_id", team_id)
-        .maybe_single()
-        .execute()
-    )
-
-    existing = res.data
+    try:
+        res = (
+            supabase.table("team_results")
+            .select("*")
+            .eq("team_id", team_id)
+            .maybe_single()
+            .execute()
+        )
+        
+        existing = res.data if res else None
+    except Exception:
+        existing = None
 
     if not existing:
         supabase.table("team_results").insert({
