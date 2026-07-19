@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from database.supabase_client import supabase
 
@@ -62,24 +62,7 @@ def cancel_game(game_id: str):
 
 
 # -------------------------
-# DELETE OLD CANCELLED GAMES (1+ day old)
-# -------------------------
-
-def delete_old_cancelled_games():
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-
-    res = (
-        supabase.table("games")
-        .delete()
-        .eq("status", "cancelled")
-        .lt("cancelled_at", cutoff)
-        .execute()
-    )
-
-    return res.data
-
-# -------------------------
-# Получение актулаьного количества игроков
+# GET CURRENT PLAYERS COUNT
 # -------------------------
 
 
@@ -91,17 +74,4 @@ def get_current_players_count(game_id: str) -> int:
         .execute()
     )
     return res.count or 0
-
-# =========================
-# GET USER INFO (NEW)
-# =========================
-def get_user(user_id: int):
-    res = (
-        supabase.table("users")
-        .select("first_name, username, telegram_id")
-        .eq("telegram_id", user_id)
-        .single()
-        .execute()
-    )
-    return res.data
 

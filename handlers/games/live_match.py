@@ -11,7 +11,6 @@ from database.matches_service import (
     get_team_name
 )
 
-from keyboards.admin_menu import admin_menu
 from keyboards.game_menu import game_menu
 
 router = Router()

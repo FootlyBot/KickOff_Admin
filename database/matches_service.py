@@ -90,13 +90,12 @@ def get_next_match(game_id: str):
         played.add((m["team_a_id"], m["team_b_id"]))
         played.add((m["team_b_id"], m["team_a_id"]))
 
-    round_num = 1
+    played_count = len(played_res.data or [])
+    round_num = played_count + 1
 
     for a, b in pairs:
         if (a["team_id"], b["team_id"]) not in played:
             return create_match(game_id, a["team_id"], b["team_id"], round_num)
-
-        round_num += 1
 
     return None
 

@@ -4,7 +4,7 @@ from aiogram.types import Message
 from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin
 
-from database.matches_service import get_next_match
+from database.matches_service import get_next_match, get_team_name
 from database.table_service import get_team_table
 from database.game_service import finish_game
 
@@ -51,8 +51,8 @@ async def next_match(message: Message):
         await message.answer("Матчи закончились")
         return
 
-    team_a_name = match.get("team_a_name", "TEAM A")
-    team_b_name = match.get("team_b_name", "TEAM B")
+    team_a_name = get_team_name(match["team_a_id"])
+    team_b_name = get_team_name(match["team_b_id"])
 
     await message.answer(
         f"⚽ Матч начался!\n"

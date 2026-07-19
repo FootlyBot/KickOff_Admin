@@ -12,7 +12,6 @@ from handlers.games.live_match import router as live_match_router
 
 
 async def main():
-
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
 
@@ -25,7 +24,7 @@ async def main():
 
     print("Bot started")
 
-    await dp.start_polling(bot)
+    await dp.start_polling(bot, drop_pending_updates=True)
 
 
 if __name__ == "__main__":

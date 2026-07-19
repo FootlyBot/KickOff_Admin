@@ -67,15 +67,14 @@ async def my_games(message: Message):
 @router.callback_query(F.data.startswith("start_match_"))
 async def start_match(callback):
 
-    game_id = callback.data.split("_")[2]
+    game_id = callback.data.removeprefix("start_match_")
 
     teams, error = create_teams_for_game(game_id)
 
     if error:
         await callback.message.answer(f"🚫 {error}")
+        await callback.answer()
         return
-
-
 
     supabase.table("games").update({
         "is_running": True
@@ -87,7 +86,7 @@ async def start_match(callback):
         text += f"{t['name']}\n"
 
         for i, p in enumerate(t["players"], 1):
-            text += f"{i}. {p['display']}\n"
+            text += f"{i}. {p['user_id']}\n"
 
         text += "\n"
 

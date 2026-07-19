@@ -9,7 +9,7 @@ router = Router()
 @router.callback_query(F.data.startswith("cancel_"))
 async def cancel_game_handler(callback: CallbackQuery):
 
-    game_id = callback.data.split("_")[1]
+    game_id = callback.data.removeprefix("cancel_")
 
     cancel_game(game_id)
 
