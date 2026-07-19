@@ -3,9 +3,10 @@ from database.supabase_client import supabase
 
 def get_team_table(game_id: str):
 
-    res = (
+    # Get teams
+    teams_res = (
         supabase.table("teams")
-        .select("team_name, team_results(wins,draws,losses)")
+        .select("team_id, team_name")
         .eq("game_id", game_id)
         .execute()
     )
@@ -14,11 +15,25 @@ def get_team_table(game_id: str):
     text += "Команда        | В | Н | П\n"
     text += "-----------------------------\n"
 
-    for t in res.data or []:
+    for team in teams_res.data or []:
+        # Get results for this team
+        try:
+            results_res = (
+                supabase.table("team_results")
+                .select("wins, draws, losses")
+                .eq("team_id", team["team_id"])
+                .maybe_single()
+                .execute()
+            )
+            stats = results_res.data if results_res and results_res.data else {}
+        except Exception:
+            stats = {}
 
-        stats = t.get("team_results", [{}])[0] if isinstance(t.get("team_results"), list) else {}
+        wins = stats.get("wins", 0)
+        draws = stats.get("draws", 0)
+        losses = stats.get("losses", 0)
 
-        text += f"{t['team_name']:<15} | {stats.get('wins',0)} | {stats.get('draws',0)} | {stats.get('losses',0)}\n"
+        text += f"{team['team_name']:<15} | {wins} | {draws} | {losses}\n"
 
     text += "</pre>"
     return text
