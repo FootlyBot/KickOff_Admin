@@ -43,7 +43,7 @@ def get_team_table(game_id: str):
     teams_data.sort(key=lambda x: (x["wins"], x["draws"], -x["losses"]), reverse=True)
 
     text = "📊 <b>Таблица</b>\n\n<pre>"
-    text += "Команда        | В | Н | П\n"
+    text += "👥 Команда        | В | Н | П\n"
     text += "-----------------------------\n"
 
     for team in teams_data:
