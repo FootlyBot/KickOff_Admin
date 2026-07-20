@@ -62,11 +62,11 @@ def get_active_match(game_id: str):
 # =========================
 # ROUND ROBIN
 # =========================
-TOTAL_ROUNDS = 3  # Number of times each pair plays each other
+TOTAL_ROUNDS = 3  # Number of times to play all matchups
 
 
 def generate_round_robin(teams):
-    """Generate all unique team pairs"""
+    """Generate all unique team pairs for a complete round-robin"""
     return list(itertools.combinations(teams, 2))
 
 
@@ -80,9 +80,10 @@ def get_next_match(game_id: str):
     if len(teams) < 2:
         return None
 
-    pairs = generate_round_robin(teams)
-
-    # Get all played matches with their round numbers
+    # Generate all unique matchups
+    all_pairs = generate_round_robin(teams)
+    
+    # Get all played matches
     played_res = (
         supabase.table("matches")
         .select("team_a_id, team_b_id, round")
@@ -90,23 +91,20 @@ def get_next_match(game_id: str):
         .execute()
     )
 
-    # Track how many times each pair has played (by round)
-    played_pairs = {}
+    # Track which pairs have been played in which rounds
+    # Key: (team_a_id, team_b_id, round_num)
+    played = set()
     for m in played_res.data or []:
         pair_key = tuple(sorted([m["team_a_id"], m["team_b_id"]]))
-        if pair_key not in played_pairs:
-            played_pairs[pair_key] = 0
-        played_pairs[pair_key] += 1
+        played.add((pair_key, m["round"]))
 
-    # Find next pair to play
-    for a, b in pairs:
-        pair_key = tuple(sorted([a["team_id"], b["team_id"]]))
-        times_played = played_pairs.get(pair_key, 0)
-        
-        # If this pair hasn't played all TOTAL_ROUNDS yet
-        if times_played < TOTAL_ROUNDS:
-            round_num = times_played + 1
-            return create_match(game_id, a["team_id"], b["team_id"], round_num)
+    # Go through each round, then each pair
+    for round_num in range(1, TOTAL_ROUNDS + 1):
+        for team_a, team_b in all_pairs:
+            pair_key = tuple(sorted([team_a["team_id"], team_b["team_id"]]))
+            
+            if (pair_key, round_num) not in played:
+                return create_match(game_id, team_a["team_id"], team_b["team_id"], round_num)
 
     return None
 
