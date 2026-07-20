@@ -6,7 +6,7 @@ from database.games import get_games_by_admin
 
 from database.matches_service import get_next_match, get_team_name
 from database.table_service import get_team_table, get_winner
-from database.game_service import finish_game
+from database.game_service import finish_game, cleanup_game
 
 from keyboards.admin_menu import admin_menu
 from keyboards.live_match_menu import build_live_keyboard
@@ -132,6 +132,9 @@ async def finish(message: Message):
             )
         
         await message.answer(winner_text, parse_mode="HTML")
+
+    # Clean up all game data
+    cleanup_game(game_id)
 
     await message.answer(
         "🏁 Матчи завершены",
