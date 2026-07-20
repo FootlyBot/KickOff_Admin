@@ -5,7 +5,7 @@ from database.admins import get_admin_by_telegram_id
 from database.games import get_games_by_admin
 
 from database.matches_service import get_next_match, get_team_name
-from database.table_service import get_team_table
+from database.table_service import get_team_table, get_winner
 from database.game_service import finish_game
 
 from keyboards.admin_menu import admin_menu
@@ -107,6 +107,31 @@ async def finish(message: Message):
         return
 
     finish_game(game_id)
+
+    # Get the winner
+    winner = get_winner(game_id)
+    
+    if winner:
+        if winner["is_tie"]:
+            winner_text = (
+                f"🏆 <b>ПОБЕДИТЕЛИ</b> 🏆\n\n"
+                f"🥇 {winner['name']}\n\n"
+                f"Результаты:\n"
+                f"✅ Победы: {winner['wins']}\n"
+                f"🤝 Ничьи: {winner['draws']}\n"
+                f"❌ Поражения: {winner['losses']}"
+            )
+        else:
+            winner_text = (
+                f"🏆 <b>ПОБЕДИТЕЛЬ</b> 🏆\n\n"
+                f"🥇 {winner['name']}\n\n"
+                f"Результаты:\n"
+                f"✅ Победы: {winner['wins']}\n"
+                f"🤝 Ничьи: {winner['draws']}\n"
+                f"❌ Поражения: {winner['losses']}"
+            )
+        
+        await message.answer(winner_text, parse_mode="HTML")
 
     await message.answer(
         "🏁 Матчи завершены",
